@@ -65,38 +65,25 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.openjdk17
   - org.freedesktop.Sdk.Extension.mono6
 
-x-compat-i386-opts: &compat_i386_opts
-  prepend-pkg-config-path: /app/lib32/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig
-  ldflags: -L/app/lib32
-  append-path: /usr/lib/sdk/toolchain-i386/bin
-  env:
-    CC: i686-unknown-linux-gnu-gcc
-    CXX: i686-unknown-linux-gnu-g++
-  libdir: /app/lib32
-
-cleanup:
-  - '*.a'
-  - '*.la'
-  - /share/man
-  - /share/help
-cleanup-commands:
-  - python3 -m compileall /app/lib
-  - mkdir -p /app/utils
 modules:
   - name: jagex-launcher
     buildsystem: simple
     build-commands:
-      - ls
       - install -D jagex-run -t /app/bin
       - mkdir -p /app/opt/jagex-launcher/prefix
       - mv ./* /app/opt/jagex-launcher
-      # - WINEPREFIX=/app/opt/jagex-launcher/prefix winecfg
     sources:
       - type: script
         dest-filename: jagex-run
         commands:
-          - cd /app/opt/jagex-launcher
-          - WINEPREFIX="$XDG_DATA_HOME" wine JagexLauncher.exe          
+          - WINEPREFIX="$XDG_DATA_HOME/prefix" winetricks --unattended corefonts
+          - if [ ! -f "$$XDG_DATA_HOME/JagexLauncher.exe" ]; then
+          -   echo "File does not exist!"
+          -   cp -r /app/opt/jagex-launcher/* "$XDG_DATA_HOME"
+          -   mkdir -p "$XDG_DATA_HOME"/prefix 
+          - fi
+          - cd "$XDG_DATA_HOME"
+          - WINEPREFIX="$XDG_DATA_HOME/prefix" wine JagexLauncher.exe          
       - type: archive
         path: jagexlauncher.zip
         sha256: 7711f41cf0e7d1c41cea986da007090bd6cb184f0e9e37e3772ef9ab24514653
