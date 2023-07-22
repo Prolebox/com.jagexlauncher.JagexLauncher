@@ -1,0 +1,134 @@
+app-id: com.ddddddd.Test
+sdk: org.gnome.Sdk
+runtime: org.gnome.Platform
+runtime-version: '44'
+command: jagex-run
+base: org.winehq.Wine
+base-version: stable-22.08
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=all
+  - --share=network
+  - --allow=multiarch
+  - --allow=devel
+  - --talk-name=org.gnome.Mutter.DisplayConfig
+  - --system-talk-name=org.freedesktop.UDisks2
+  - --filesystem=home
+  - --filesystem=/run/media
+  # For Debian
+  - --filesystem=/media
+  - --filesystem=~/.var/app/com.valvesoftware.Steam:ro
+  - --env=PATH=/app/bin:/usr/bin:/app/utils/bin:/usr/lib/extensions/vulkan/MangoHud/bin/:/app/jre/bin/
+  - --env=GST_PLUGIN_SYSTEM_PATH=/app/lib32/gstreamer-1.0:/app/lib/gstreamer-1.0:/usr/lib/i386-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0
+  # System tray icon
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-data/flatpak:ro
+  # Needed for appimages
+  - --env=APPIMAGE_EXTRACT_AND_RUN=1
+
+
+inherit-extensions:
+  - org.freedesktop.Platform.GL32
+  - org.freedesktop.Platform.ffmpeg-full
+  - org.freedesktop.Platform.ffmpeg_full.i386
+  - org.winehq.Wine.gecko
+  - org.winehq.Wine.mono
+  - org.winehq.Wine.DLLs
+
+add-extensions:
+  org.gnome.Platform.Compat.i386:
+    directory: lib/i386-linux-gnu
+    version: '44'
+
+  org.gnome.Platform.Compat.i386.Debug:
+    directory: lib/debug/lib/i386-linux-gnu
+    version: '44'
+    no-autodownload: true
+
+  com.valvesoftware.Steam.Utility:
+    subdirectories: true
+    directory: utils
+    version: stable
+    versions: stable;beta;test
+    add-ld-path: lib
+    merge-dirs: bin
+    no-autodownload: true
+    autodelete: true
+
+sdk-extensions:
+  - org.gnome.Sdk.Compat.i386
+  - org.freedesktop.Sdk.Extension.toolchain-i386
+  - org.freedesktop.Sdk.Extension.openjdk17
+  - org.freedesktop.Sdk.Extension.mono6
+
+x-compat-i386-opts: &compat_i386_opts
+  prepend-pkg-config-path: /app/lib32/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig
+  ldflags: -L/app/lib32
+  append-path: /usr/lib/sdk/toolchain-i386/bin
+  env:
+    CC: i686-unknown-linux-gnu-gcc
+    CXX: i686-unknown-linux-gnu-g++
+  libdir: /app/lib32
+
+cleanup:
+  - '*.a'
+  - '*.la'
+  - /share/man
+  - /share/help
+cleanup-commands:
+  - python3 -m compileall /app/lib
+  - mkdir -p /app/utils
+modules:
+  - name: jagex-launcher
+    buildsystem: simple
+    build-commands:
+      - ls
+      - install -D jagex-run -t /app/bin
+      - mkdir -p /app/opt/jagex-launcher/prefix
+      - mv ./* /app/opt/jagex-launcher
+      # - WINEPREFIX=/app/opt/jagex-launcher/prefix winecfg
+    sources:
+      - type: script
+        dest-filename: jagex-run
+        commands:
+          - cd /app/opt/jagex-launcher
+          - WINEPREFIX="$XDG_DATA_HOME" wine JagexLauncher.exe          
+      - type: archive
+        path: jagexlauncher.zip
+        sha256: 7711f41cf0e7d1c41cea986da007090bd6cb184f0e9e37e3772ef9ab24514653
+  # - name: bolt
+  #   buildsystem: cmake-ninja
+  #   build-commands:
+  #     - install -D bolt-run -t /app/bin
+  #   config-opts:
+  #     - -DCMAKE_BUILD_TYPE=Release
+  #     - -DBOLT_BINDIR=bin
+  #   sources:
+  #     - type: archive
+  #       dest: cef/dist
+  #       url: https://cef-builds.spotifycdn.com/cef_binary_114.2.13%2Bg6792e13%2Bchromium-114.0.5735.200_linux64.tar.bz2
+  #       sha256: 35c9ed170126f82beaa6328eafd3f29c0e0598d4fa9709d8e9ac2e1772caba73
+  #     - type: git
+  #       url: https://github.com/Adamcake/Bolt.git
+  #       commit: e21c0b6e05294c4ae7d62341956f882a9773d62c 
+  #     - type: script
+  #       dest-filename: bolt-run
+  #       commands:
+  #         - set -x
+  #         - cd /app/opt/bolt-launcher
+  #         - zypak-wrapper ./bolt "$@"      
+  # - shared-modules/gtk2/gtk2.json
+  # - name: openssl
+  #   buildsystem: simple
+  #   build-commands:
+  #     - ./config --prefix=/app --openssldir=/app/ssl shared zlib
+  #     - make -j $FLATPAK_BUILDER_N_JOBS
+  #     - make install
+  #   sources:
+  #     - type: git
+  #       url: https://github.com/openssl/openssl.git
+  #       commit: 129058165d195e43a0ad10111b0c2e29bdf65980
