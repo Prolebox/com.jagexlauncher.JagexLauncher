@@ -6,14 +6,15 @@ set -e
 ####################################################
 
 jagex_launcher_url="https://cdn.jagex.com/Jagex%20Launcher%20Installer.exe"
-winebin=/app/opt/lutris-GE-Proton8-12-x86_64/bin/wine64
+
+gecko_version="2.47.3"
+gecko_url="https://dl.winehq.org/wine/wine-gecko/$gecko_version/wine-gecko-$gecko_version-x86_64.msi"
+
+winebin="/app/opt/lutris-GE-Proton8-12-x86_64/bin/wine64"
+wineexe="$winebin/wine"
 workdir="$XDG_DATA_HOME/jagex-launcher"
 wineprefix="$workdir/prefix"
-
-####################################################
-#               Variable Initialization           #
-####################################################
-first_run="false"
+gecko_installation_location="$wineprefix/drive_c/windows/syswow64/gecko/$gecko_version/wine_gecko"
 
 ####################################################
 #               Function Declarations             #
@@ -21,24 +22,35 @@ first_run="false"
 
 # Function to install the jagex launcher
 function install_launcher() {
-    # Create wine prefix directory and launch the installer
+    # Place pre-created wine prefix so we don't run into errors related to mono or gecko
     mkdir -p "$wineprefix"
-
+    wget -O prefix.tar.gz "https://public-bucket-caution1.s3.amazonaws.com/prefix.tar.gz"
+    tar xf prefix.tar.gz -C "$wineprefix/../"
+    
     # Download the jagex launcher installer
     cd "$workdir" 
     wget -O jagex-launcher-installer.exe "$jagex_launcher_url"
-
-    WINEPREFIX="$wineprefix" WINEDLLOVERRIDES="jscript.dll=n" "$winebin" "jagex-launcher-installer.exe" &
+    
+    # Run wine installer
+    WINEPREFIX="$wineprefix" WINEDLLOVERRIDES="jscript.dll=n" "$winebin" "jagex-launcher-installer.exe" > installer_log.out &
 
     # Grab the pid of the installer process
     installer_process="$!"
 
-    above_200=0
+    total_loops=0
 
-    echo "Beginning installation..."
+    echo "PID of install process is $installer_process. Beginning installation..."
 
     while true 
     do
+        # Checking if installer is still running
+        if ps -p $installer_process > /dev/null
+        then
+            echo "$installer_process is still running. Continuing to check directory..."
+        else
+            echo "$installer_process appears to have quit. Ending loop."
+            break
+        fi
         echo "Checking directory size..."
         # Grab directory size for jagex launcher install directory. This is how we know when to kill the installer window.
         dir_size=$(((du -sh "${wineprefix}/drive_c/Program Files (x86)/Jagex Launcher" 2> /dev/null) || echo '0G') | awk '{ print $1 }')
@@ -50,11 +62,12 @@ function install_launcher() {
             above_200=$((above_200+1))
         fi
 
-        # If the directory has been above 200M for two loops, then the installer should be done and we can kill the window.
         if (( $above_200 > 1 )); then
+            echo "Installation complete. Killing $installer_process"
             kill "$installer_process"
             break # Exit the while loop
         fi
+
         sleep 10
     done;
 
@@ -66,13 +79,11 @@ function install_launcher() {
 #                 Main Script Logic                #
 ####################################################
 
-# If the JagexLauncher executable exists, then first run setup is not needed
+# If the JagexLauncher executable exists, then first run setup is needed
 if [ ! -f "$XDG_DATA_HOME/jagex-launcher/prefix/drive_c/Program Files (x86)/Jagex Launcher/JagexLauncher.exe" ]; then
     echo "First Run!"
-    first_run="true"
-fi
-
-if [ "$first_run" == "true" ]; then
     install_launcher
 fi
+
+# Run the jagex launcher
 WINEPREFIX="$XDG_DATA_HOME/jagex-launcher/prefix" "$winebin" "$wineprefix/drive_c/Program Files (x86)/Jagex Launcher/JagexLauncher.exe"
