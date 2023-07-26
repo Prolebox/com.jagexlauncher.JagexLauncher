@@ -7,14 +7,10 @@ set -e
 
 jagex_launcher_url="https://cdn.jagex.com/Jagex%20Launcher%20Installer.exe"
 
-gecko_version="2.47.3"
-gecko_url="https://dl.winehq.org/wine/wine-gecko/$gecko_version/wine-gecko-$gecko_version-x86_64.msi"
-
 winebin="/app/opt/lutris-GE-Proton8-12-x86_64/bin/wine64"
 wineexe="$winebin/wine"
 workdir="$XDG_DATA_HOME/jagex-launcher"
 wineprefix="$workdir/prefix"
-gecko_installation_location="$wineprefix/drive_c/windows/syswow64/gecko/$gecko_version/wine_gecko"
 
 ####################################################
 #               Function Declarations             #
