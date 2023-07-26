@@ -33,7 +33,6 @@ finish-args:
   # Needed for appimages
   - --env=APPIMAGE_EXTRACT_AND_RUN=1
 
-
 inherit-extensions:
   - org.freedesktop.Platform.GL32
   - org.freedesktop.Platform.ffmpeg-full
