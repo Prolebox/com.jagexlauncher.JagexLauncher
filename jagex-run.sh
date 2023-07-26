@@ -32,12 +32,12 @@ function install_launcher() {
     wget -O jagex-launcher-installer.exe "$jagex_launcher_url"
     
     # Run wine installer
-    WINEPREFIX="$wineprefix" WINEDLLOVERRIDES="jscript.dll=n" "$winebin" "jagex-launcher-installer.exe" > installer_log.out &
+    WINEPREFIX="$wineprefix" WINEDLLOVERRIDES="jscript.dll=n" "$winebin" "jagex-launcher-installer.exe" &
 
     # Grab the pid of the installer process
     installer_process="$!"
 
-    total_loops=0
+    above_200=0
 
     echo "PID of install process is $installer_process. Beginning installation..."
 
